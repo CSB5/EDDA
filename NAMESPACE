@@ -1,0 +1,22 @@
+useDynLib(EDDA)
+export(generateData,testDATs,computeAUC,plotROC,plotPRC)
+importClassesFrom(methods, character, data.frame, matrix, numeric) 
+importMethodsFrom(baySeq, rbind) 
+importMethodsFrom(ROCR, plot) 
+importFrom(baySeq, getLibsizes, getLikelihoods.NB, getPriors.NB,
+           topCounts)
+import(DESeq) 
+importFrom(edgeR, calcNormFactors, commonCondLogLikDerDelta, DGEList,
+           estimateCommonDisp, estimateTagwiseDisp, exactTest,
+           exactTestByDeviance, exactTestBySmallP, exactTestDoubleTail,
+           getDispersion, mglmOneGroup, splitIntoGroups, topTags) 
+importFrom(graphics, abline, axis, barplot, box, legend, lines, mtext,
+           par, points, rect, text)
+importFrom(methods, is, new)
+importFrom(parallel, mclapply)
+importFrom(ROCR, performance, prediction) 
+importFrom(snow, makeCluster, stopCluster) 
+importFrom(stats, chisq.test, embed, fisher.test, optimize, p.adjust,
+           rgamma, rmultinom, rnbinom, rnorm, runif, smooth.spline,
+           supsmu, wilcox.test)
+importFrom(utils, combn, read.delim, read.table)

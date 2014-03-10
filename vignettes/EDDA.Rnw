@@ -1,0 +1,116 @@
+%\VignetteIndexEntry{EDDA Vignette}
+%\VignetteKeyword{RNA-Seq}
+%\VignetteKeyword{differential expression}
+%\VignettePackage{EDDA}
+\documentclass[12pt]{article}
+
+\textwidth=6.2in
+\textheight=8.5in
+\oddsidemargin=0.2in
+\evensidemargin=0.2in
+\headheight=0in
+\headsep=0in
+\setlength{\parindent}{0pt}
+
+\setlength{\parskip}{1em}
+
+\begin{document}
+
+\title{EDDA: Experimental Design in Differential Abundance analysis}
+\author{Li Juntao,Luo Huaien, Chia Kuan Hui Burton, Niranjan Nagarajan}
+\date{12 Feb 2014}
+\maketitle
+
+\section{Introduction}
+
+EDDA can aid in the design of a range of common experiments such as RNA-seq, Nanostring assays, 
+RIP-seq and Metagenomic sequencing, and enables researchers to comprehensively investigate the 
+impact of experimental decisions on the ability to detect differential abundance.
+
+\section{Simple example}
+
+This is a simple example for EDDA code.
+\begin{Schunk}
+\begin{Sinput}
+> library("EDDA")
+> data <- generateData(EntityCount=500)
+>test.obj <- testDATs(data,DE.methods=c("DESeq","edgeR"),nor.methods="default")
+>auc.obj  <- computeAUC(test.obj)
+>plotROC(auc.obj)
+>plotPRC(auc.obj)
+\end{Sinput}
+\end{Schunk}
+
+\section{Simulation of Count Data in EDDA}
+When provided with sample data, EDDA uses the entity count and the sample abundance profile 
+from the data to do simulations. If EDDA is provided with sample data under two conditions 
+then the profile of differential abundance seen there is assigned to genes by keeping 
+the relationship of mean expression and fold change. 
+
+The default model for simulations in EDDA is the Full model where the mean abundance for 
+each entity (under each condition) and the dispersion value provided is used to compute means 
+for the replicates using a Negative Binomial distribution. 
+
+This is an example to generate data with all default options.
+\begin{Schunk}
+\begin{Sinput}
+>data <- generateData()
+>dim(data$count)
+>dim(data$DiffAbundList)
+>data$dataLabel
+\end{Sinput}
+\end{Schunk}
+
+This is an example to generate data with input count.
+\begin{Schunk}
+\begin{Sinput}
+>x <- matrix(rnbinom(1000*15,size=1,mu=10), nrow=1000, ncol=15);
+>x.lable=c(rep(0,10),rep(1,5))
+>x[1:50,11:15] <- x[1:50,11:15]*10
+>x.name=paste("g",1:1000,sep="");
+>write.table(cbind(x.name,x),"count.txt",row.names =FALSE, sep ='\t')
+>data <- generateData(inputCount="count.txt",inputLabel=x.lable)
+>dim(data$count)
+>dim(data$DiffAbundList)
+>data$dataLabel
+\end{Sinput}
+\end{Schunk}
+
+This is an example to generate data with input count and redefined parameters.
+\begin{Schunk}
+\begin{Sinput}
+>data <- generateData(inputCount="count.txt",inputLabel=x.lable,
+>                     ControlRep=10,CaseRep=10,EntityCount=3000,SimulType="auto2")
+>dim(data$count)
+>dim(data$DiffAbundList)
+>data$dataLabel
+\end{Sinput}
+\end{Schunk}
+
+
+\section{Differential abundance testing and performance evaluation}
+
+Differential abundance testing (DAT) is meant to enable users to easily run a panel of DATs on any given dataset, 
+to assess the variability of results across DATs, compute the intersection and union of 
+these results and correspondingly select a more robust or comprehensive set of calls for downstream analysis. 
+
+Performance evaluation is to allow users to evaluate the relative performance of various DATs based on 
+the characteristics of their experimental setting. 
+
+This is an example to perferme differential abundance testing and performance evaluation.
+\begin{Schunk}
+\begin{Sinput}
+>data <- generateData(EntityCount=500)
+>test.obj <- testDATs(data,DE.methods=c("DESeq","edgeR"),nor.methods="default")
+>auc.obj  <- computeAUC(test.obj)
+>plotROC(auc.obj)
+>plotPRC(auc.obj)
+\end{Sinput}
+\end{Schunk}
+
+\section{References}
+Luo Huaien, Li Juntao,Chia Kuan Hui Burton, Shyam Prabhakar, Paul Robson, 
+Niranjan Nagarajan, The importance of study design for detecting 
+differentially abundant features in high-throughput experiments, under review.
+
+\end{document}

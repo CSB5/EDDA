@@ -1,0 +1,31 @@
+CHANGES IN VERSION 0.99.2
+--------------------------
+SIGNIFICANT USER-VISIBLE CHANGES
+     o Put "NEWS.Rd" in EDDA/.
+     o Change biocViews to DESCRIPTION file.
+     o Modify DESCRIPTION and NAMESPACE file.
+     o move the data to EDDA/inst/extdata.
+
+CHANGES IN VERSION 0.99.1
+--------------------------
+SIGNIFICANT USER-VISIBLE CHANGES
+
+     o Put "EDDA.Rnw" in EDDA/vignettes.
+     o Remove "library("EDDA");" in file man/EDDA-package.Rd.
+     o Clean up pre-defined tempates in man files.
+     o Use TRUE instead of T and FALSE instead of F.
+     o Clean R code by breaking code less 80 characters, removing 
+        tabs and using indent by a multiple of 4 spaces.
+     
+NEW FEATURES
+
+     o Add biocViews to DESCRIPTION file.
+     o Add KEYWORDS for each function man file.
+     o Add "NEWS.Rd" in EDDA/inst/.
+
+
+CHANGES IN VERSION 0.99.0
+--------------------------
+SIGNIFICANT USER-VISIBLE CHANGES
+
+    o Submit EDDA
