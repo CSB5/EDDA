@@ -17,14 +17,14 @@
 \begin{document}
 
 \title{EDDA: Experimental Design in Differential Abundance analysis}
-\author{Li Juntao,Luo Huaien, Chia Kuan Hui Burton, Niranjan Nagarajan}
-\date{12 Feb 2014}
+\author{Luo Huaien*, Li Juntao*,Chia Kuan Hui Burton, Niranjan Nagarajan}
+\date{1 April 2014}
 \maketitle
 
 \section{Introduction}
 
-EDDA can aid in the design of a range of common experiments such as RNA-seq, Nanostring assays, 
-RIP-seq and Metagenomic sequencing, and enables researchers to comprehensively investigate the 
+EDDA aids in the design of a range of common experiments such as RNA-seq, Nanostring assays, 
+RIP-seq and Metagenomic sequencing, and enables researchers to comprehensively evaluate the 
 impact of experimental decisions on the ability to detect differential abundance.
 
 \section{Simple example}
@@ -42,26 +42,22 @@ This is a simple example for EDDA code.
 \end{Schunk}
 
 \section{Simulation of Count Data in EDDA}
-When provided with sample data, EDDA uses the entity count and the sample abundance profile 
-from the data to do simulations. If EDDA is provided with sample data under two conditions 
-then the profile of differential abundance seen there is assigned to genes by keeping 
-the relationship of mean expression and fold change. 
+EDDA can either generate synthetic data by using the experimental characteristics specified by the user or if input is real experimental data, EDDA will first learn experimental characterisitcs from this real data and generate synthetic data that mimics the real data accordingly. 
 
-The default model for simulations in EDDA is the Full model where the mean abundance for 
-each entity (under each condition) and the dispersion value provided is used to compute means 
-for the replicates using a Negative Binomial distribution. 
-
-This is an example to generate data with all default options.
+This is an example to generate data with experimental characteristics specified by user.
 \begin{Schunk}
 \begin{Sinput}
->data <- generateData()
+>data <- generateData(EntityCount=1000,SampleVar="high",numDataPoints=500,
+>                       ControlRep=5,FC="Unif(3,5)",perDiffAbund=0.1,minAbund=0,
+>                       modelFile="BP")
+
 >dim(data$count)
 >dim(data$DiffAbundList)
 >data$dataLabel
 \end{Sinput}
 \end{Schunk}
 
-This is an example to generate data with input count.
+This is an example to generate synthetic data if real pilot data (count.txt) are available.
 \begin{Schunk}
 \begin{Sinput}
 >x <- matrix(rnbinom(1000*15,size=1,mu=10), nrow=1000, ncol=15);
@@ -76,28 +72,48 @@ This is an example to generate data with input count.
 \end{Sinput}
 \end{Schunk}
 
-This is an example to generate data with input count and redefined parameters.
+This is an example to generate synthetic data that captures the properties of real data but with number of replicates and entity count redefined by the user.
 \begin{Schunk}
 \begin{Sinput}
 >data <- generateData(inputCount="count.txt",inputLabel=x.lable,
 >                     ControlRep=10,CaseRep=10,EntityCount=3000,SimulType="auto2")
+
 >dim(data$count)
 >dim(data$DiffAbundList)
 >data$dataLabel
 \end{Sinput}
 \end{Schunk}
 
+The default model for data generation in EDDA is Full model, which generates synthetic counts from Negative Binomial distribution in conjunction with Multinomial distribution. EDDA also provides options to generate data directly from Negative Binomial distribution or Multinomial distribution. In cases where previously mentioned distributions are not applicable, EDDA can also generate data using Model Free approach by subsampling.   
 
+This is an example to generate synthetic data using Model Free approach by setting sampling data the same as real pilot data (count.txt).
+\begin{Schunk}
+\begin{Sinput}
+>data <- generateData(SimulModel="ModelFree", inputCount="count.txt",inputLabel=x.lable, modelFile=NULL)
+>dim(data$count)
+>dim(data$DiffAbundList)
+>data$dataLabel
+\end{Sinput}
+\end{Schunk}
+
+Another example to generate synthetic data using Model Free approach by subsampling the avaible single cell RNA-seq data.
+\begin{Schunk}
+\begin{Sinput}
+>data <- generateData(SimulModel="ModelFree", inputCount="count.txt",inputLabel=x.lable, modelFile="SingleCell")
+>dim(data$count)
+>dim(data$DiffAbundList)
+>data$dataLabel
+\end{Sinput}
+\end{Schunk}
 \section{Differential abundance testing and performance evaluation}
 
-Differential abundance testing (DAT) is meant to enable users to easily run a panel of DATs on any given dataset, 
-to assess the variability of results across DATs, compute the intersection and union of 
-these results and correspondingly select a more robust or comprehensive set of calls for downstream analysis. 
+The differential abundance testing (DAT) module will allow users to easily run a panel of DATs (eg. edgeR, DESeq) on any given dataset, so as to assess the variability of results across DATs, and to compute the intersection and union of these results. Therefore, users can make more informed decisions on calling entities of differential abundance for downstream analysis. 
 
-Performance evaluation is to allow users to evaluate the relative performance of various DATs based on 
+
+Performance evaluation will allow users to evaluate the relative performance of various DATs based on 
 the characteristics of their experimental setting. 
 
-This is an example to perferme differential abundance testing and performance evaluation.
+This is an example to perform differential abundance testing and performance evaluation.
 \begin{Schunk}
 \begin{Sinput}
 >data <- generateData(EntityCount=500)
@@ -109,7 +125,7 @@ This is an example to perferme differential abundance testing and performance ev
 \end{Schunk}
 
 \section{References}
-Luo Huaien, Li Juntao,Chia Kuan Hui Burton, Shyam Prabhakar, Paul Robson, 
+Luo Huaien, Li Juntao,Chia Kuan Hui Burton, Paul Robson, 
 Niranjan Nagarajan, The importance of study design for detecting 
 differentially abundant features in high-throughput experiments, under review.
 

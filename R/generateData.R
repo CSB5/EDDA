@@ -1,11 +1,31 @@
 generateData <- function(SimulModel = "Full", SampleVar = "medium", 
     ControlRep = 5, CaseRep = ControlRep, EntityCount = 1000, 
     FC = "Norm(2,1)", perDiffAbund = 0.1, upPDA = perDiffAbund/2, 
-    downPDA = perDiffAbund/2, numDataPoints = 100, modelFile = "HBRmodel", 
+    downPDA = perDiffAbund/2, numDataPoints = 100, AbundProfile = "HBR", modelFile = NULL, 
     minAbund = 10, varLibsizes = 0.1, inputCount = NULL, inputLabel = NULL, 
     SimulType = "auto") {
     
-    NDEfc = FALSE
+    #Check setting correct first to avoid meaningless waiting if wrong
+    if (SimulModel == "ModelFree" || SimulModel == "ModelFreeMn") {
+      if (!is.null(modelFile))
+      {
+        if (modelFile %in% c("SingleCell")){
+          
+        }else if (file.exists(modelFile)){
+          model.data <- read.delim(modelFile, header = TRUE, stringsAsFactors = FALSE, 
+                                   row.names = 1)
+          if (dim(model.data)[2]<=1)
+          {
+            stop("ERROR: No replicates!")
+          }
+        }else{
+          stop("ERROR: modelFile not correct! Set modelFile to NULL or correct name or correct path!")
+        }
+        
+      }else if (is.null(modelFile) && (is.null(inputCount) || is.null(inputLabel))){
+        stop("ERROR: using ModelFree approach without model file and pilot data for sampling.")
+      }
+    }
     
     model = SimulModel
     NR1 = ControlRep
@@ -27,7 +47,7 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
     mean_fc_relation = NULL
     
     if (is.null(inputCount) == FALSE & is.null(inputLabel) == FALSE) {
-        print(paste("Using", inputCount))
+        print(paste("Learning parameters from", inputCount))
         model.data <- read.delim(inputCount, header = TRUE, stringsAsFactors = FALSE, 
             row.names = 1)
         
@@ -41,8 +61,7 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
         mu.control <- apply(count.control, 1, mean)
         
         model.input <- cbind(1:nrow(model.data), mu.control)
-        model.input <- model.input[order(model.input[, 2], decreasing = TRUE), 
-            ]
+        model.input <- model.input[order(model.input[, 2], decreasing = TRUE),]
         
         EC_data = dim(model.data)[1]
         ND_data = mean(mu.control)
@@ -55,53 +74,43 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
             libsizes = apply(model.data, 2, sum)
         }
         
-        # library('edgeR')
+        NR1= length(inputLabel[inputLabel==0])
+        NR2=length(inputLabel[inputLabel==1])
         
-        d <- DGEList(counts = model.data, group = inputLabel)
-        d = calcNormFactors(d, method = "TMM")
+        para <- tryCatch(learn_parameter_DESeq(model.data, inputLabel), error=function(e) e)
         
-        if (2 == length(inputLabel)) {
-            d$common.dispersion = 0.4
-            
-        } else {
-            ## estimate common dispersion
-            d <- estimateCommonDisp(d)
-            
-            ## estimate gene specific dispersion
-            d <- estimateTagwiseDisp(d)
+        if (is.null(para$res)){
+          para <- learn_parameter_edgeR(model.data, inputLabel)
         }
         
-        de.com = exactTest(d)
-        res <- topTags(de.com, n = nrow(de.com))$table
+        res <- para$res
+        dispersions <- para$dispersions
         
-        mean_fc_relation = data.frame(mean = 2^res$logCPM, FC = 2^res$logFC)
+        mean_fc_relation = data.frame(meanA=res$baseMeanA, meanB=res$baseMeanB)
         
-        ### 
-        mean_fc_relation[, 1] = mean_fc_relation[, 1] * EC_data * 
-            ND_data/10^6
-        ### 
         row.names(mean_fc_relation) <- row.names(res)
-        
-        dispersions <- d$tagwise.dispersion
-        names(dispersions) <- rownames(d$counts)
-        dispersions <- dispersions[rownames(mean_fc_relation)]
         
         idx_up <- NULL
         idx_dn <- NULL
         
         ttl_num = 0
         for (i in 1:dim(res)[1]) {
-            if (runif(1) > res$FDR[i]) 
-                ttl_num = ttl_num + 1
+            if(is.na(res$padj[i])) {
+              next
+            }else if (runif(1) > res$padj[i]){
+              ttl_num = ttl_num + 1
+            }
         }
         percentFDR <- ttl_num/dim(res)[1]
         
         
         ttl_num = 0
         for (i in 1:dim(res)[1]) {
-            if (runif(1) > res$FDR[i] && res$FDR[i] < 0.05) {
+          if(is.na(res$padj[i])) {
+            next
+          }else if(runif(1) > res$padj[i] && res$padj[i] < 0.05) {
                 ttl_num = ttl_num + 1
-            }
+          }
         }
         
         FDR5percent <- ttl_num/dim(res)[1]
@@ -110,17 +119,19 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
         add_num <- round(add_percent * (dim(res)[1]))
         
         
-        add_FC <- seq(1, dim(res)[1])[abs(res$logFC) > log2(1.5) & 
-            res$FDR >= 0.05]
+        add_FC <- seq(1, dim(res)[1])[abs(res$log2FoldChange) > log2(1.5) & 
+            res$padj >= 0.05]
         add_FC <- sample(add_FC, min(length(add_FC), add_num))
         
         for (i in 1:dim(res)[1]) {
-            if ((runif(1) > res$FDR[i] && res$FDR[i] < 0.05) || 
+          if(is.na(res$padj[i])) {
+            next
+          }else if ((runif(1) > res$padj[i] && res$padj[i] < 0.05) || 
                 i %in% add_FC) {
-                if (res$logFC[i] > 0) {
+                if (res$log2FoldChange[i] > 0) {
                   idx_up <- c(idx_up, i)
                 }
-                if (res$logFC[i] < 0) {
+                if (res$log2FoldChange[i] < 0) {
                   idx_dn <- c(idx_dn, i)
                 }
             }
@@ -129,21 +140,15 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
         
         DEidx <- c(idx_up, idx_dn)
         NDEidx <- seq(1, dim(res)[1])[-c(idx_up, idx_dn)]
-        nonDEfc <- res$logFC[-c(idx_up, idx_dn)]
-        
-        # print(length(idx_up)) print(length(idx_dn))
-        # print(length(nonDEfc))
         
         sig.data <- res[c(idx_up, idx_dn), ]
         up.data <- res[idx_up, ]
         dn.data <- res[idx_dn, ]
         
-        # print(2^min(abs(sig.data$logFC)))
-        
-        minFC = min(c(2^(up.data[, 1]), 2^(-dn.data[, 1])))
+        minFC = min(c(2^(up.data[,"log2FoldChange"]),2^(-dn.data[,"log2FoldChange"])))
         minFC = min(minFC, 1)
         
-        fcList = c(2^(up.data[, 1]), 2^(-dn.data[, 1]))
+        fcList=c(2^(up.data[,"log2FoldChange"]),2^(-dn.data[,"log2FoldChange"]))
         
         
         fcList[fcList < minFC] <- minFC
@@ -163,9 +168,9 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
             DataLib = apply(model.data, 2, sum)
             libsizes <- round(runif(NR1 + NR2, EC * ND * min(DataLib)/mean(DataLib), 
                 EC * ND * max(DataLib)/mean(DataLib)))
-            # print(libsizes)
-            mean_fc_relation[, 1] = mean_fc_relation[, 1] * ND/mean(mean_fc_relation[, 
-                1])
+            
+            mean_fc_relation[,1] = mean_fc_relation[,1]*ND/mean(mean_fc_relation[,1])
+            mean_fc_relation[,2] = mean_fc_relation[,2]*ND/mean(mean_fc_relation[,2])
         }
         
         if (SimulType == "auto2") {
@@ -176,7 +181,6 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
             DataLib = apply(model.data, 2, sum)
             libsizes <- round(runif(NR1 + NR2, EC * ND * min(DataLib)/mean(DataLib), 
                 EC * ND * max(DataLib)/mean(DataLib)))
-            # print(libsizes)
             
             ratio = EC/dim(mean_fc_relation)[1]
             numDE = round(length(DEidx) * ratio)
@@ -190,12 +194,11 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
                 NDEidx <- sample(NDEidx, numNDE, replace = FALSE)
             }
             
-            fcList <- mean_fc_relation[DEidx, 2]
-            mean_fc_relation <- mean_fc_relation[c(DEidx, NDEidx), 
-                ]
-            mean_fc_relation[, 1] = mean_fc_relation[, 1] * ND/mean(mean_fc_relation[, 
-                1])
-            dispersions <- dispersions[c(DEidx, NDEidx)]
+            fcList <- mean_fc_relation[DEidx, 1]
+            mean_fc_relation <- mean_fc_relation[c(DEidx, NDEidx),]
+            mean_fc_relation[,1] = mean_fc_relation[,1]*ND/mean(mean_fc_relation[,1])
+            mean_fc_relation[,2] = mean_fc_relation[,2]*ND/mean(mean_fc_relation[,2])
+            dispersions <- dispersions[c(DEidx, NDEidx),]
             
             DEidx <- 1:length(DEidx)
         }
@@ -205,44 +208,92 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
             minFC = dist.number1
             maxFC = dist.number2
             fcList = runif(EC * perDE, minFC, maxFC)
-        }
-        if (dist.type == "Norm") {
-            fcList = 2^(rnorm(EC * perDE, dist.number1, dist.number2))
+        }else if (dist.type == "Norm") {
+            fcList = rnorm(EC * perDE, dist.number1, dist.number2)
             minFC = min(fcList)
             maxFC = max(fcList)
+        }else if (dist.type == "log2Norm") {
+          fcList = 2^(rnorm(EC * perDE, dist.number1, dist.number2))
+          minFC = min(fcList)
+          maxFC = max(fcList)
+        }else if (dist.type == "logNorm") {
+          fcList = exp(rnorm(EC * perDE, dist.number1, dist.number2))
+          minFC = min(fcList)
+          maxFC = max(fcList)
         }
         
         fcList[fcList < 1] <- 1
-        nonDEfc <- c(0, 0)
         
         theta <- 0.5
-        if (is.character(SampleVar)) 
-            switch(SampleVar, low = {
-                k = 0.05
-            }, medium = {
-                k = 0.5
-            }, high = {
-                k = 0.85
-            }) else {
+        if (is.character(SampleVar))
+        {
+          switch(SampleVar, low = {
+            k = 0.05
+          }, medium = {
+            k = 0.5
+          }, high = {
+            k = 0.85
+          })
+        } else {
             k = SampleVar * 2
         }
         
         dispersions <- rgamma(EC, shape = k, scale = theta)
-        if (modelFile == "HBRmodel") {
-            #HBRmodel <- read.table(system.file("extdata","HBRmodel.txt.gz", 
-             #           package="EDDA"),head=T)
-            #rm(HBRmodel)
-            data("HBRmodel")
-            #load(system.file("extdata","HBRmodel.txt.gz", package="EDDA")) 
-            model.input = HBRmodel
-            print(paste("Using", modelFile))
-        } else model.input <- read.delim(modelFile, header = FALSE, 
-            stringsAsFactors = TRUE)
+        dispersions <- cbind(dispersions, dispersions)
+        
+        if (AbundProfile == "HBR") {
+            data("HBR")
+            model.input = HBR
+            print(paste("Using", AbundProfile, "Profile"))
+        } else if (AbundProfile == "BP")
+        {
+          data("BP")
+          model.input = BP
+          print(paste("Using", AbundProfile, "Profile"))
+        } else if (AbundProfile == "Wu")
+        {
+          data("Wu")
+          model.input = Wu
+          print(paste("Using", AbundProfile, "Profile"))
+        }else{
+          
+          if (AbundProfile == "SingleCell"){
+            data(SingleCell)
+            model.data <- SingleCell
+          }else{
+            model.data <- read.delim(AbundProfile, header = TRUE, stringsAsFactors = FALSE, 
+                                     row.names = 1)
+          }
+
+          if (dim(model.data)[2]>1)
+          {
+            ind <- apply(model.data, 1, mean) > minAbund
+            model.data <- model.data[ind, ]
+            
+            count.control <- model.data  
+            ND.control <- apply(count.control, 2, mean)
+            count.control <- sweep(count.control, 2, ND.control, 
+                                   "/") * mean(ND.control)
+            mu.control <- apply(count.control, 1, mean)
+            
+            print(paste("Using Abundance Profile obtained from", AbundProfile))
+            
+          }else{
+            ind <- model.data[,1] > minAbund
+            model.data <- as.data.frame(model.data[ind, ])
+            mu.control <- model.data[,1]
+            print(paste("Using", AbundProfile, "Profile"))
+          }
+
+          
+          model.input <- cbind(1:nrow(model.data), mu.control)
+          model.input <- model.input[order(model.input[, 2], decreasing = TRUE),]
+         
+        }
+
     }
     
     dataLabel = c(rep(0, NR1), rep(1, NR2))
-    y <- matrix(0, nrow = EC, ncol = (NR1 + NR2))
-    
     
     # Step 2: Randomly select genes
     geneCounts <- EC
@@ -285,7 +336,6 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
     
     
     # DE simulation
-    DEgeneID <- NULL
     EDgenelist <- data.frame(matrix(0, nrow = length(fcList), 
         ncol = 4))
     colnames(EDgenelist) <- c("RowID", "geneName", "FC", "log2FC")
@@ -303,527 +353,316 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
         libsizes <- round(runif(NR1 + NR2, EC * ND * (1 - varLibsizes), 
             EC * ND * (1 + varLibsizes)))
     
-    if (is.null(mean_fc_relation)) {
-        AllFC <- rep(1, length(model.rawFreq))
-        fcList[coinList == 0] <- 1/fcList[coinList == 0]
-        AllFC[randomList] <- fcList
-        mean_fc_relation = data.frame(mean = model.rawFreq * 
-            mean(libsizes), FC = AllFC)
-        DEidx <- randomList
+    if (is.null(mean_fc_relation))
+    {
+      AllFC <- rep(1, length(model.rawFreq)) 
+      fcList[coinList==0] <- 1/fcList[coinList==0]
+      AllFC[randomList] <- fcList
+      
+      meanA <- NULL
+      meanB <- NULL
+      for(j in 1:length(model.rawFreq)){
+        mean12 <- model.rawFreq[j]*mean(libsizes)
+        fc <- AllFC[j]
+        if (fc>=1)
+        {
+          coin <- 0
+        }else if(fc<1)
+        {
+          coin <- 1
+          fc <- 1/fc
+        }
+        mu1 = (coin * sqrt(fc) + (1-coin) / sqrt(fc)) * mean12
+        mu2 = ((1-coin) * sqrt(fc) + coin / sqrt(fc)) * mean12
+        meanA <- c(meanA, mu1)
+        meanB <- c(meanB, mu2)
+      }
+      
+      mean_fc_relation = data.frame(meanA=meanA, meanB=meanB)
+      DEidx <- randomList
     }
     
     if (model == "NegBinomial" || model == "Full") {
         print(paste("Simulation model: ", model))
         for (j in 1:EC) {
             if (j %in% DEidx) {
-                mean12 <- mean_fc_relation[j, 1]
-                fc <- mean_fc_relation[j, 2]
-                if (fc >= 1) {
-                  coin <- 0
-                } else if (fc < 1) {
-                  coin <- 1
-                  fc <- 1/fc
-                }
+              mean1 <- mean_fc_relation[j,1]
+              mean2 <- mean_fc_relation[j,2]
+              fc <- mean2/mean1
                 
-                # coin <- coinList[index] # 0: up-regulation; 1:
-                # down-regulation fc <- fcList[index]
-                
-                for (i in 1:NR1) model.matrix[j, i] <- rnbinom(1, 
-                  size = 1/dispersions[j], mu = (coin * sqrt(fc) + 
-                    (1 - coin)/sqrt(fc)) * mean12)
-                for (i in (NR1 + 1):(NR1 + NR2)) model.matrix[j, 
-                  i] <- rnbinom(1, size = 1/dispersions[j], mu = ((1 - 
-                  coin) * sqrt(fc) + coin/sqrt(fc)) * mean12)
-                if (coin == 1) {
-                  EDgenelist[index, 1] = j
-                  EDgenelist[index, 2] = rownames(model.matrix)[j]
-                  EDgenelist[index, 3] = fc
-                  EDgenelist[index, 4] = log2(fc)
-                } else {
-                  EDgenelist[index, 1] = j
-                  EDgenelist[index, 2] = rownames(model.matrix)[j]
-                  EDgenelist[index, 3] = 1/fc
-                  EDgenelist[index, 4] = log2(1/fc)
-                }
-                DEgeneID <- c(DEgeneID, rownames(model.matrix)[j])
-                index <- index + 1
+              for(i in 1:NR1)
+                model.matrix[j,i] <- rnbinom(1, size = 1/dispersions[j,1], 
+                                             mu = mean1)      
+              for(i in (NR1+1):(NR1+NR2))
+                model.matrix[j,i] <- rnbinom(1, size = 1/dispersions[j,2], 
+                                             mu = mean2)
+              
+              EDgenelist[index,1]=j
+              EDgenelist[index,2]=rownames(model.matrix)[j]
+              EDgenelist[index,3]=fc
+              EDgenelist[index,4]=log2(fc)
+              
+              index <- index + 1
             } else {
                 
-                mean12 <- mean_fc_relation[j, 1]
-                if (NDEfc == TRUE) {
-                  fc <- mean_fc_relation[j, 2]
-                } else {
-                  fc = 1
-                }
-                # coin = sample(c(0,1),1)
-                if (fc >= 1) {
-                  coin <- 0
-                } else if (fc < 1) {
-                  coin <- 1
-                  fc <- 1/fc
-                }
-                
-                
-                for (i in 1:NR1) model.matrix[j, i] <- rnbinom(1, 
-                  size = 1/dispersions[j], mu = (coin * sqrt(fc) + 
-                    (1 - coin)/sqrt(fc)) * mean12)
-                for (i in (NR1 + 1):(NR1 + NR2)) model.matrix[j, 
-                  i] <- rnbinom(1, size = 1/dispersions[j], mu = ((1 - 
-                  coin) * sqrt(fc) + coin/sqrt(fc)) * mean12)
+              mean1 <- mean_fc_relation[j,1]
+              mean2 <- mean_fc_relation[j,2]
+              
+              for(i in 1:NR1)
+                model.matrix[j,i] <- rnbinom(1, size = 1/dispersions[j,1], 
+                                             mu = (mean1+mean2)/2);      
+              for(i in (NR1+1):(NR1+NR2))
+                model.matrix[j,i] <- rnbinom(1, size = 1/dispersions[j,2], 
+                                             mu = (mean1+mean2)/2)
             }
             
         }
     } else if (model == "Multinom") {
         print("Simulation model: Multinomial")
-        
+
         for (j in 1:EC) {
-            if (j %in% randomList) 
+            if (j %in% DEidx) 
+            {
+                mean1 <- mean_fc_relation[j,1]
+                mean2 <- mean_fc_relation[j,2]
+                fc <- mean2/mean1
+                
+                for (i in 1:NR1) 
                 {
-                  coin <- coinList[index]  # 0: up-regulation; 1: down-regulation
-                  fc <- fcList[index]
-                  for (i in 1:NR1) {
-                    model.matrix[j, i] <- (coin * sqrt(fc) + 
-                      (1 - coin)/sqrt(fc)) * model.rawFreq[j] * 
-                      libsizes[i]
-                  }
-                  for (i in (NR1 + 1):(NR1 + NR2)) {
-                    model.matrix[j, i] <- ((1 - coin) * sqrt(fc) + 
-                      coin/sqrt(fc)) * model.rawFreq[j] * libsizes[i]
-                  }
-                  if (coin == 1) {
-                    EDgenelist[index, 1] = j
-                    EDgenelist[index, 2] = rownames(model.matrix)[j]
-                    EDgenelist[index, 3] = fc
-                    EDgenelist[index, 4] = log2(fc)
-                  } else {
-                    EDgenelist[index, 1] = j
-                    EDgenelist[index, 2] = rownames(model.matrix)[j]
-                    EDgenelist[index, 3] = 1/fc
-                    EDgenelist[index, 4] = log2(1/fc)
-                  }
-                  DEgeneID <- c(DEgeneID, rownames(model.matrix)[j])
-                  index <- index + 1
-                }  # end for loop
- else {
-                for (i in 1:(NR1 + NR2)) model.matrix[j, i] <- model.rawFreq[j] * 
-                  libsizes[i]
+                  model.matrix[j, i] <- mean1/mean(libsizes)*libsizes[i]
+                }
+                    
+                for (i in (NR1 + 1):(NR1 + NR2)) {
+                    model.matrix[j, i] <-  mean2/mean(libsizes)*libsizes[i]
+                }
+                EDgenelist[index,1]=j
+                EDgenelist[index,2]=rownames(model.matrix)[j]
+                EDgenelist[index,3]=fc
+                EDgenelist[index,4]=log2(fc)
+                
+                index <- index + 1
+            } else {
+              mean1 <- mean_fc_relation[j,1]
+              mean2 <- mean_fc_relation[j,2]
+              
+              mean12 <- (mean1+mean2)/2
+              for (i in 1:NR1) 
+              {
+                model.matrix[j, i] <- mean12/mean(libsizes)*libsizes[i]
+              }
+              
+              for (i in (NR1 + 1):(NR1 + NR2)) {
+                model.matrix[j, i] <- mean12/mean(libsizes)*libsizes[i]
+              }
             }
             
         }
         
-        
-    } else if (model == "ModelFree") {
+    } else if (model == "ModelFree"||SimulModel=="ModelFreeMn") {
         print("Simulation model: Model Free")
-        # library(DESeq)
+        
+        if (!is.null(modelFile))
+        {
+          print(paste("Using", modelFile, "as Model data for sampling"))
+          if (modelFile %in% c("SingleCell")){
+            data(SingleCell)
+            model.data <- SingleCell
+          }else if (file.exists(modelFile)){
+            model.data <- read.delim(modelFile, header = TRUE, stringsAsFactors = FALSE, 
+                                     row.names = 1)
+            if (dim(model.data)[2]<=1)
+            {
+              stop("ERROR: No replicates!")
+            }
+          }else{
+            stop("ERROR: modelFile not correct! Set modelFile to NULL or correct name or correct path!")
+          }
+        }
+        
+        if (!is.null(inputCount) && !is.null(inputLabel) && is.null(modelFile))
+        {
+          cond1 <- 0
+          cond2 <- 1
+        }else{
+          inputLabel <- rep(0, times = dim(model.data)[2])
+          cond1 <- 0
+          cond2 <- 0
+        }
+
+        ind <- apply(model.data, 1, mean) > 0
+        model.data <- model.data[ind, ]
+        
         cds <- newCountDataSet(model.data, inputLabel)
         cds <- estimateSizeFactors(cds)
-        data_norm <- round(counts(cds, normalized = TRUE))
-        
-        mean_data0 <- apply(data_norm[, inputLabel == 0], 1, 
-            mean)
-        mean_data1 <- apply(data_norm[, inputLabel == 1], 1, 
-            mean)
-        
-        data0_libsize <- mean(apply(data_norm[, inputLabel == 
-            0], 2, sum))
-        data1_libsize <- mean(apply(data_norm[, inputLabel == 
-            1], 2, sum))
+        data_norm <- counts(cds, normalized = TRUE)
+          
+        mean_data1 <- apply(data_norm[, inputLabel == cond1], 1, 
+                            mean)
+        mean_data2 <- apply(data_norm[, inputLabel == cond2], 1, 
+                            mean)
         
         rindex <- 1:dim(data_norm)[1]
+        
+        ModelNR1 <- sum(inputLabel == cond1)
+        ModelNR2 <- sum(inputLabel == cond2)
         
         for (j in 1:EC) {
             
             if (j %in% DEidx) {
-                mean12 <- mean_fc_relation[j, 1]
-                fc <- mean_fc_relation[j, 2]
-                if (fc >= 1) {
-                  coin <- 0
-                } else if (fc < 1) {
-                  coin <- 1
-                  fc <- 1/fc
-                }
-                # coin <- coinList[index] # 0: up-regulation; 1:
-                # down-regulation fc <- fcList[index]
-                
-                {
-                  mu = (coin * sqrt(fc) + (1 - coin)/sqrt(fc)) * 
-                    mean12
-                  # mu = mean_data0[row.names(mean_fc_relation)[j]] mu =
-                  # mean_data0[paste('g',j,sep='')]
-                  
-                  tmp <- abs(mean_data0 - mu)
-                  thrsh = min(10, mu * 0.1)
-                  if (sum(tmp < thrsh) > 10) {
-                    idx <- rindex[tmp < thrsh]
-                  } else {
-                    idx <- order(tmp)[1:10]
-                  }
-                  
-                  d1 <- data_norm[idx, inputLabel == 0]
-                  if (any(apply(d1, 1, mean) == 0)) {
-                    d1 <- as.vector(d1)
-                  } else {
-                    d1 <- round(as.vector(mu * d1/apply(d1, 1, 
-                      mean)))
-                    # d1 <- as.vector(d1)
-                  }
-                  model.matrix[j, 1:NR1] <- sample(d1, NR1, replace = TRUE)
-                  
+              
+              mean1 <- mean_fc_relation[j,1]
+              mean2 <- mean_fc_relation[j,2]
+              fc <- mean2/mean1
+              
+              tmp <- abs(mean_data1 - mean1)
+              if (NR1 < ModelNR1)
+              {
+                idx <- order(tmp)[1]
+                idx1 <- rindex[tmp <= tmp[idx]]
+                if (length(idx1)>1){
+                  idx<- sample(idx1,1)
                 }
                 
-                
-                {
-                  mu = ((1 - coin) * sqrt(fc) + coin/sqrt(fc)) * 
-                    mean12
-                  # mu = mean_data1[row.names(mean_fc_relation)[j]] mu =
-                  # mean_data1[paste('g',j,sep='')]
-                  
-                  tmp <- abs(mean_data1 - mu)
-                  thrsh = min(10, mu * 0.1)
-                  if (sum(tmp < thrsh) > 10) {
-                    idx <- rindex[tmp < thrsh]
-                  } else {
-                    idx <- order(tmp)[1:10]
-                  }
-                  
-                  d1 <- data_norm[idx, inputLabel == 1]
-                  if (any(apply(d1, 1, mean) == 0)) {
-                    d1 <- as.vector(d1)
-                  } else {
-                    d1 <- round(as.vector(mu * d1/apply(d1, 1, 
-                      mean)))
-                    # d1 <- as.vector(d1)
-                  }
-                  model.matrix[j, (NR1 + 1):(NR1 + NR2)] <- sample(d1, 
-                    NR2, replace = TRUE)
-                  
-                }
-                
-                
-                if (coin == 1) {
-                  EDgenelist[index, 1] = j
-                  EDgenelist[index, 2] = rownames(model.matrix)[j]
-                  EDgenelist[index, 3] = fc
-                  EDgenelist[index, 4] = log2(fc)
+                d1 <- as.vector(data_norm[idx, inputLabel == cond1])
+                if (mean(d1)!=0) d1 <- mean1*d1/mean(d1)
+              }else{
+                thrsh = min(10, mean1 * 0.1)
+                if (sum(tmp < thrsh) > 10) {
+                  idx <- rindex[tmp < thrsh]
                 } else {
-                  EDgenelist[index, 1] = j
-                  EDgenelist[index, 2] = rownames(model.matrix)[j]
-                  EDgenelist[index, 3] = 1/fc
-                  EDgenelist[index, 4] = log2(1/fc)
+                  idx <- order(tmp)[1:10]
                 }
-                DEgeneID <- c(DEgeneID, rownames(model.matrix)[j])
-                index <- index + 1
+              
+                d1 <- data_norm[idx, inputLabel == cond1]
+                if (any(apply(d1, 1, mean) == 0)) {
+                  d1 <- as.vector(d1)
+                } else {
+                  d1 <- as.vector(mean1 * d1/apply(d1, 1, mean))
+
+                }
+              
+              }
+              model.matrix[j, 1:NR1] <- sample(d1, NR1, replace = TRUE)
+                  
+              tmp <- abs(mean_data2 - mean2)
+              if (NR2 < ModelNR2)
+              {
+                idx <- order(tmp)[1]
+                idx1 <- rindex[tmp <= tmp[idx]]
+                if (length(idx1)>1){
+                  idx<- sample(idx1,1)
+                }
+                d1 <- as.vector(data_norm[idx, inputLabel == cond2])
+                if (mean(d1)!=0) d1 <- mean2*d1/mean(d1)
+              }else{
+                thrsh = min(10, mean2 * 0.1)
+                if (sum(tmp < thrsh) > 10) {
+                  idx <- rindex[tmp < thrsh]
+                } else {
+                  idx <- order(tmp)[1:10]
+                }
                 
+                d1 <- data_norm[idx, inputLabel == cond2]
+                if (any(apply(d1, 1, mean) == 0)) {
+                  d1 <- as.vector(d1)
+                } else {
+                  d1 <- as.vector(mean2 * d1/apply(d1, 1, mean))
+                  
+                }
+                
+              }
+              model.matrix[j, (NR1 + 1):(NR1 + NR2)] <- sample(d1,  NR2, replace = TRUE)
+              
+                
+              EDgenelist[index,1]=j
+              EDgenelist[index,2]=rownames(model.matrix)[j]
+              EDgenelist[index,3]=fc
+              EDgenelist[index,4]=log2(fc)
+              
+              index <- index + 1
+            
             } else {
                 
-                mean12 <- mean_fc_relation[j, 1]
-                if (NDEfc == TRUE) {
-                  fc <- mean_fc_relation[j, 2]
+              mean1 <- mean_fc_relation[j,1]
+              mean2 <- mean_fc_relation[j,2]
+              mean12 <- (mean1+mean2)/2
+              
+              tmp <- abs(mean_data1 - mean12)
+              if (NR1 < ModelNR1)
+              {
+                idx <- order(tmp)[1]
+                idx1 <- rindex[tmp <= tmp[idx]]
+                if (length(idx1)>1){
+                  idx<- sample(idx1,1)
+                }
+                d1 <- as.vector(data_norm[idx, inputLabel == cond1])
+                if (mean(d1)!=0) d1 <- mean12*d1/mean(d1)
+              }else{
+                thrsh = min(10, mean12 * 0.1)
+                if (sum(tmp < thrsh) > 10) {
+                  idx <- rindex[tmp < thrsh]
                 } else {
-                  fc = 1
+                  idx <- order(tmp)[1:10]
                 }
                 
-                if (fc >= 1) {
-                  coin <- 0
-                } else if (fc < 1) {
-                  coin <- 1
-                  fc <- 1/fc
-                }
-                
-                {
-                  mu = (coin * sqrt(fc) + (1 - coin)/sqrt(fc)) * 
-                    mean12
-                  # mu = mean_data0[row.names(mean_fc_relation)[j]] mu =
-                  # mean_data0[paste('g',j,sep='')]
-                  
-                  
-                  tmp <- abs(mean_data0 - mu)
-                  thrsh = min(10, mu * 0.1)
-                  if (sum(tmp < thrsh) > 10) {
-                    idx <- rindex[tmp < thrsh]
-                  } else {
-                    idx <- order(tmp)[1:10]
-                  }
-                  
-                  d1 <- data_norm[idx, inputLabel == 0]
-                  if (any(apply(d1, 1, mean) == 0)) {
-                    d1 <- as.vector(d1)
-                  } else {
-                    d1 <- round(as.vector(mu * d1/apply(d1, 1, 
-                      mean)))
-                    # d1 <- as.vector(d1)
-                  }
-                  model.matrix[j, 1:NR1] <- sample(d1, NR1, replace = TRUE)
+                d1 <- data_norm[idx, inputLabel == cond1]
+                if (any(apply(d1, 1, mean) == 0)) {
+                  d1 <- as.vector(d1)
+                } else {
+                  d1 <- as.vector(mean12 * d1/apply(d1, 1, mean))
                   
                 }
                 
+              }
+              model.matrix[j, 1:NR1] <- sample(d1, NR1, replace = TRUE)
+              
+              tmp <- abs(mean_data2 - mean12)
+              if (NR2 < ModelNR2)
+              {
+                idx <- order(tmp)[1]
+                idx1 <- rindex[tmp <= tmp[idx]]
+                if (length(idx1)>1){
+                  idx<- sample(idx1,1)
+                }
+                d1 <- as.vector(data_norm[idx, inputLabel == cond2])
+                if (mean(d1)!=0) d1 <- mean12*d1/mean(d1)
+              }else{
+                thrsh = min(10, mean12 * 0.1)
+                if (sum(tmp < thrsh) > 10) {
+                  idx <- rindex[tmp < thrsh]
+                } else {
+                  idx <- order(tmp)[1:10]
+                }
                 
-                {
-                  mu = ((1 - coin) * sqrt(fc) + coin/sqrt(fc)) * 
-                    mean12
-                  # mu = mean_data1[row.names(mean_fc_relation)[j]]
-                  
-                  # mu = mean_data1[paste('g',j,sep='')]
-                  
-                  tmp <- abs(mean_data1 - mu)
-                  thrsh = min(10, mu * 0.1)
-                  if (sum(tmp < thrsh) > 10) {
-                    idx <- rindex[tmp < thrsh]
-                  } else {
-                    idx <- order(tmp)[1:10]
-                  }
-                  
-                  d1 <- data_norm[idx, inputLabel == 1]
-                  if (any(apply(d1, 1, mean) == 0)) {
-                    d1 <- as.vector(d1)
-                  } else {
-                    d1 <- round(as.vector(mu * d1/apply(d1, 1, 
-                      mean)))
-                    # d1 <- as.vector(d1)
-                  }
-                  model.matrix[j, (NR1 + 1):(NR1 + NR2)] <- sample(d1, 
-                    NR2, replace = TRUE)
+                d1 <- data_norm[idx, inputLabel == cond2]
+                if (any(apply(d1, 1, mean) == 0)) {
+                  d1 <- as.vector(d1)
+                } else {
+                  d1 <- as.vector(mean12 * d1/apply(d1, 1, mean))
                   
                 }
+                
+              }
+              model.matrix[j, (NR1 + 1):(NR1 + NR2)] <- sample(d1,  NR2, replace = TRUE)
+              
+                
                 
             }
             
             
         }
         
-    } else if (model == "SingleCell") {
-        print("Simulation model: Single Cell")
-        # library(DESeq)
-        #SingleCell<- read.table(system.file("extdata","SingleCell.txt.gz", 
-        #                package="EDDA"),head=T)
-        #rm(SingleCell)
-        data(SingleCell)
-        data <- SingleCell
+    } 
         
-        cds <- newCountDataSet(data, rep(0, times = dim(data)[2]))
-        cds <- estimateSizeFactors(cds)
-        data_norm <- round(counts(cds, normalized = TRUE))
-        
-        ind <- apply(data_norm, 1, mean) > 0
-        data_norm <- data_norm[ind, ]
-        
-        mean_ref <- apply(data_norm, 1, mean)
-        
-        rindex <- 1:dim(data_norm)[1]
-        
-        for (j in 1:EC) {
-            
-            if (j %in% DEidx) {
-                mean12 <- mean_fc_relation[j, 1]
-                fc <- mean_fc_relation[j, 2]
-                if (fc >= 1) {
-                  coin <- 0
-                } else if (fc < 1) {
-                  coin <- 1
-                  fc <- 1/fc
-                }
-                # coin <- coinList[index] # 0: up-regulation; 1:
-                # down-regulation fc <- fcList[index]
-                
-                {
-                  mu = (coin * sqrt(fc) + (1 - coin)/sqrt(fc)) * 
-                    mean12
-                  tmp <- abs(mean_ref - mu)
-                  idx <- order(tmp)[1]
-                  
-                  d1 <- as.numeric(data_norm[idx, ])
-                  d1 <- round(d1 * mu/mean(d1))
-                  
-                  stepp = as.numeric(quantile(d1, probs = seq(0, 
-                    1, length.out = (NR1 + 1))))
-                  
-                  for (nr in 1:NR1) {
-                    if (nr == 1) {
-                      ind <- d1 >= stepp[nr] & d1 <= stepp[nr + 
-                        1]
-                    } else {
-                      ind <- d1 > stepp[nr] & d1 <= stepp[nr + 
-                        1]
-                    }
-                    
-                    if (sum(ind) > 0) 
-                      model.matrix[j, nr] <- sample(d1[ind], 
-                        1, replace = TRUE) else {
-                      model.matrix[j, nr] <- stepp[nr]
-                    }
-                  }
-                  
-                  d1 <- as.numeric(model.matrix[j, 1:NR1])
-                  model.matrix[j, 1:NR1] <- sample(round(d1), 
-                    NR1)
-                  
-                  
-                }
-                
-                
-                {
-                  mu = ((1 - coin) * sqrt(fc) + coin/sqrt(fc)) * 
-                    mean12
-                  
-                  tmp <- abs(mean_ref - mu)
-                  idx <- order(tmp)[1]
-                  
-                  d1 <- as.numeric(data_norm[idx, ])
-                  d1 <- round(d1 * mu/mean(d1))
-                  
-                  # model.matrix[j,(NR1+1):(NR1+NR2)] <- sample(d1, NR2,
-                  # replace=T)
-                  
-                  stepp = as.numeric(quantile(d1, probs = seq(0, 
-                    1, length.out = (NR2 + 1))))
-                  
-                  for (nr in 1:NR2) {
-                    
-                    if (nr == 1) {
-                      ind <- d1 >= stepp[nr] & d1 <= stepp[nr + 
-                        1]
-                    } else {
-                      ind <- d1 > stepp[nr] & d1 <= stepp[nr + 
-                        1]
-                    }
-                    
-                    if (sum(ind) > 0) 
-                      model.matrix[j, nr + NR1] <- sample(d1[ind], 
-                        1, replace = TRUE) else {
-                      model.matrix[j, nr + NR1] <- stepp[nr]
-                    }
-                    
-                  }
-                  
-                  d1 <- as.numeric(model.matrix[j, (NR1 + 1):(NR1 + 
-                    NR2)])
-                  model.matrix[j, (NR1 + 1):(NR1 + NR2)] <- sample(round(d1), 
-                    NR2)
-                }
-                
-                
-                if (coin == 1) {
-                  EDgenelist[index, 1] = j
-                  EDgenelist[index, 2] = rownames(model.matrix)[j]
-                  EDgenelist[index, 3] = fc
-                  EDgenelist[index, 4] = log2(fc)
-                } else {
-                  EDgenelist[index, 1] = j
-                  EDgenelist[index, 2] = rownames(model.matrix)[j]
-                  EDgenelist[index, 3] = 1/fc
-                  EDgenelist[index, 4] = log2(1/fc)
-                }
-                DEgeneID <- c(DEgeneID, rownames(model.matrix)[j])
-                index <- index + 1
-                
-            } else {
-                
-                mean12 <- mean_fc_relation[j, 1]
-                if (NDEfc == TRUE) {
-                  fc <- mean_fc_relation[j, 2]
-                } else {
-                  fc = 1
-                }
-                
-                if (fc >= 1) {
-                  coin <- 0
-                } else if (fc < 1) {
-                  coin <- 1
-                  fc <- 1/fc
-                }
-                
-                {
-                  mu = (coin * sqrt(fc) + (1 - coin)/sqrt(fc)) * 
-                    mean12
-                  tmp <- abs(mean_ref - mu)
-                  idx <- order(tmp)[1]
-                  
-                  d1 <- as.numeric(data_norm[idx, ])
-                  d1 <- round(d1 * mu/mean(d1))
-                  
-                  # model.matrix[j,1:NR1] <- sample(d1, NR1, replace=T)
-                  stepp = as.numeric(quantile(d1, probs = seq(0, 
-                    1, length.out = (NR1 + 1))))
-                  
-                  for (nr in 1:NR1) {
-                    if (nr == 1) {
-                      ind <- d1 >= stepp[nr] & d1 <= stepp[nr + 
-                        1]
-                    } else {
-                      ind <- d1 > stepp[nr] & d1 <= stepp[nr + 
-                        1]
-                    }
-                    
-                    if (sum(ind) > 0) 
-                      model.matrix[j, nr] <- sample(d1[ind], 
-                        1, replace = TRUE) else {
-                      model.matrix[j, nr] <- stepp[nr]
-                    }
-                  }
-                  
-                  d1 <- as.numeric(model.matrix[j, 1:NR1])
-                  model.matrix[j, 1:NR1] <- sample(round(d1), 
-                    NR1)
-                  
-                  
-                }
-                
-                
-                {
-                  mu = ((1 - coin) * sqrt(fc) + coin/sqrt(fc)) * 
-                    mean12
-                  tmp <- abs(mean_ref - mu)
-                  idx <- order(tmp)[1]
-                  
-                  d1 <- as.numeric(data_norm[idx, ])
-                  d1 <- round(d1 * mu/mean(d1))
-                  
-                  # model.matrix[j,(NR1+1):(NR1+NR2)] <- sample(d1, NR2,
-                  # replace=T)
-                  stepp = as.numeric(quantile(d1, probs = seq(0, 
-                    1, length.out = (NR2 + 1))))
-                  
-                  for (nr in 1:NR2) {
-                    
-                    if (nr == 1) {
-                      ind <- d1 >= stepp[nr] & d1 <= stepp[nr + 
-                        1]
-                    } else {
-                      ind <- d1 > stepp[nr] & d1 <= stepp[nr + 
-                        1]
-                    }
-                    
-                    if (sum(ind) > 0) 
-                      model.matrix[j, nr + NR1] <- sample(d1[ind], 
-                        1, replace = TRUE) else {
-                      model.matrix[j, nr + NR1] <- stepp[nr]
-                    }
-                    
-                  }
-                  
-                  d1 <- as.numeric(model.matrix[j, (NR1 + 1):(NR1 + 
-                    NR2)])
-                  model.matrix[j, (NR1 + 1):(NR1 + NR2)] <- sample(round(d1), 
-                    NR2)
-                  
-                }
-                
-            }
-            
-            
-        }
-        
-    }
     # Generate frequency matrix
     model.freq <- sweep(model.matrix, 2, apply(model.matrix, 
         2, sum), "/")
     
-    if (model == "NegBinomial" || model == "ModelFree" || model == 
-        "SingleCell") 
+    if (model == "NegBinomial"|| model == "ModelFree") 
         model.combined <- round(sweep(model.freq, 2, libsizes, 
             "*"))
     
-    if (model == "Multinom" || model == "Full") {
+    if (model == "Multinom" || model == "Full"|| model == "ModelFreeMn") {
         # Generate multinomial distribution using frequen matrix
         model.combined <- matrix(0, nrow = EC, ncol = (NR1 + 
             NR2))
@@ -835,4 +674,78 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
     }
     return(list(count = model.combined, DiffAbundList = EDgenelist, 
         dataLabel = dataLabel))
+}
+
+
+learn_parameter_DESeq <- function(data, inputLabel){
+  NR1= length(inputLabel[inputLabel==0])
+  NR2=length(inputLabel[inputLabel==1])
+  
+  runID=""
+  
+  conds <- c(rep("N",NR1), rep("T", NR2));
+  cds <- newCountDataSet(normalizeData(data, conds, runID, 10), conditions=inputLabel)
+  sizeFactors(cds) <- c(rep(1,length(conds)))
+  #cds <- newCountDataSet(model.data, conditions=inputLabel)
+  #cds <- estimateSizeFactors(cds)
+  
+  
+  if(length(inputLabel) == 2){
+    cds <- estimateDispersions(cds, method= "blind", fitType='local', sharingMode='fit-only')
+  }else{
+    cds <- estimateDispersions(cds, method= "per-condition", fitType='local')
+  }
+  
+  ## differential expression
+  res <- nbinomTest(cds, "0", "1")
+  rownames(res) <- res$id
+  
+#  mean_fc_relation = data.frame(meanA=res$baseMeanA, meanB=res$baseMeanB)
+#  row.names(mean_fc_relation) <- row.names(res)
+  
+  dispersions <- fData(cds)
+  
+  return(list(res=res, dispersions=dispersions))
+}
+
+
+learn_parameter_edgeR <- function(data, inputLabel){
+
+  NR1= length(inputLabel[inputLabel==0])
+  NR2=length(inputLabel[inputLabel==1])
+  
+  runID=""
+  
+  conds <- c(rep("N",NR1), rep("T", NR2));
+  model.data.norm <- normalizeData(data, conds, runID, 10)
+  
+  d <- DGEList(counts=model.data.norm, group=inputLabel)
+  d$samples$norm.factors <- rep(1, length(inputLabel));
+  
+  if(2 == length(inputLabel)){
+    d$common.dispersion = 0.4
+    
+  }else{
+    ## estimate common dispersion
+    d <- estimateCommonDisp(d)
+    
+    ## estimate gene specific dispersion
+    d <- estimateTagwiseDisp(d)
+  }
+  
+  de.com = exactTest(d);
+  res <- topTags(de.com, n=nrow(de.com))$table;
+  
+  res$padj <- res$FDR
+  res$log2FoldChange <- res$logFC
+  
+  
+  res$baseMeanA = apply(as.matrix(model.data.norm[,inputLabel==0]),1,mean)[row.names(res)]
+  res$baseMeanB = apply(as.matrix(model.data.norm[,inputLabel==1]),1,mean)[row.names(res)]
+  
+  dispersions <- cbind(d$tagwise.dispersion,d$tagwise.dispersion)
+  rownames(dispersions) <- rownames(d$counts)
+  dispersions <- dispersions[rownames(mean_fc_relation),]
+  
+  return(list(res=res, dispersions=dispersions))
 }
