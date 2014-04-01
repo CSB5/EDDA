@@ -6,7 +6,7 @@
 generateData(SimulModel="Full", SampleVar="medium", 
 		ControlRep=5, CaseRep=ControlRep, EntityCount=1000, FC="Norm(2,1)",
 		perDiffAbund=0.1, upPDA=perDiffAbund/2, downPDA=perDiffAbund/2,
-		numDataPoints=100, modelFile="HBRmodel",minAbund=10,varLibsizes=0.1,
+		numDataPoints=100, AbundProfile = "HBR", modelFile = NULL, minAbund=10,varLibsizes=0.1,
 		inputCount=NULL,inputLabel=NULL,SimulType="auto")
 }
 \arguments{
@@ -15,8 +15,7 @@ Simulation model used. Default is "Full".
 SimulModel="NegBinomial" is negtive binomial model which generates data using negtive binomial distribution.
 SimulModel="Multinom" is multinomial model which generates data mimicking the multinomial sampling process.
 SimulModel="Full" is a model which combines "NegBinomial" and "Multinom".
-SimulModel="ModelFree" uses model free approach to generate data by sampling.
-SimulModel="SingleCell" is only for single-cell model free simulation. 
+SimulModel="ModelFree" uses model free approach to generate data by sub-sampling counts from modelFile (if modelFile != NULL) or from input File (if modelFile == NULL)  
 }
   \item{SampleVar}{
 Sample variation: Default is "medium".
@@ -32,7 +31,7 @@ Number of replicates for case group. Default is same as ControlRep.
 Entity count.  Default is 1000.
 }
   \item{FC}{
-Fold change type. It can be "Norm(mu,sigma)" or "Unif(a,b)". mu,sigma and a,b need be predefined. Default is "Norm(2,1)".
+Fold change type. It can be "Norm(mu,sigma)", "logNorm(mu,sigma)", "log2Norm(mu,sigma)" or "Unif(a,b)". mu,sigma and a,b need be predefined. Default is "Norm(2,1)".
 }
   \item{perDiffAbund}{
 Percentage of differential abundance. Default is 0.1.
@@ -46,9 +45,17 @@ Percentage of down-regulated differential abundance. Default is perDiffAbund/2.
   \item{numDataPoints}{
 Number of data points. Default is 100.
 }
-  \item{modelFile}{
-Model file for average abundance. Default is HBRmodel.
+  \item{AbundProfile}{
+AbundProfile for average abundance profile. It can be either the different profiles used in the paper ("HBR", "BP" and "Wu") or it can be location of the abundance profile. Default is "HBR".
 }
+
+ \item{modelFile}{
+Sample data file for model free approach. Default is NULL.
+If modelFile = NULL, Model Free approach will subsample from Input file.
+If modelFile = "SingleCell", Model Free approach will subsample from the available single cell RNA-seq data.
+if modelFile is the name of a count file, this count file will be used as sample file for sub-sampling.
+}
+
   \item{minAbund}{
 Minimum abundance cutoff. Default is 10.
 }

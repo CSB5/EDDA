@@ -7,14 +7,11 @@ Author: Li Juntao, Luo Huaien, Chia Kuan Hui Burton, Niranjan Nagarajan
 Maintainer: Li Juntao<lij9@gis.a-star.edu.sg>, Luo
         Huaien<luoh2@gis.a-star.edu.sg>, Niranjan Nagarajan
         <nagarajann@gis.a-star.edu.sg>
-Description: EDDA can aid in the design of a range of common
-        experiments such as RNA-seq, Nanostring assays, RIP-seq and
-        Metagenomic sequencing, and enables researchers to
-        comprehensively investigate the impact of experimental
-        decisions on the ability to detect differential abundance.
+Description: EDDA can aid in the design of a range of common experiments such as RNA-seq, Nanostring assays, RIP-seq and Metagenomic sequencing, and enables researchers to comprehensively investigate the impact of experimental decisions on the ability to detect differential abundance.
 License: GPL (>= 2)
-Depends: Rcpp (>= 0.10.4)
+Depends: Rcpp (>= 0.10.4),parallel,methods,ROCR,DESeq,baySeq,snow,edgeR
 Imports: graphics, stats, utils, parallel, methods, ROCR, DESeq,
         baySeq, snow, edgeR
 LinkingTo: Rcpp
 biocViews: Bioinformatics, DifferentialExpression
+Packaged: 2014-03-25 09:29:07 UTC; luoh2

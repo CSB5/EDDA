@@ -21,21 +21,21 @@ MODEnormalization <- function(counts, conds, runID, winSize) {
     counts <- counts[meanExp > 10, ]
     
     ####################################### 
-    lib1 <- apply(counts[, conds == "N"], 2, mean)
-    lib2 <- apply(counts[, conds == "T"], 2, mean)
+    lib1 <- apply(as.matrix(counts[, conds == "N"]), 2, mean)
+    lib2 <- apply(as.matrix(counts[, conds == "T"]), 2, mean)
     
     normfactor <- lib1/median(lib1)
-    counts[, conds == "N"] <- round(as.matrix(sweep(counts[, 
-        conds == "N"], 2, normfactor, "/")))
+    counts[, conds == "N"] <- round(sweep(as.matrix(counts[, 
+        conds == "N"]), 2, normfactor, "/"))
     normfactor <- lib2/median(lib2)
-    counts[, conds == "T"] <- round(as.matrix(sweep(counts[, 
-        conds == "T"], 2, normfactor, "/")))
+    counts[, conds == "T"] <- round(sweep(as.matrix(counts[, 
+        conds == "T"]), 2, normfactor, "/"))
     ####################################### 
     
     
     
-    a <- apply(counts[, conds == "N"], 1, mean)
-    b <- apply(counts[, conds == "T"], 1, mean)
+    a <- apply(as.matrix(counts[, conds == "N"]), 1, mean)
+    b <- apply(as.matrix(counts[, conds == "T"]), 1, mean)
     
     ind <- (a != 0) & (b != 0)
     a <- a[ind]
