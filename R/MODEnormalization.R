@@ -7,7 +7,7 @@ setClass(Class = "Result", representation(roc = "matrix", prc = "matrix",
 
 filterGenesByCounts <- function(counts, minCountsThreshold) {
     rowSum <- apply(counts, 1, sum)
-    return(counts[rowSum > minCountsThreshold, ])
+    return(counts[rowSum>minCountsThreshold & !is.na(rowSum), ])
 }
 
 

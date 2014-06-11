@@ -13,5 +13,5 @@ Depends: Rcpp (>= 0.10.4),parallel,methods,ROCR,DESeq,baySeq,snow,edgeR
 Imports: graphics, stats, utils, parallel, methods, ROCR, DESeq,
         baySeq, snow, edgeR
 LinkingTo: Rcpp
-biocViews: Bioinformatics, DifferentialExpression
+biocViews: Sequencing, ExperimentalDesign, Normalization, RNASeq, ChIPSeq
 Packaged: 2014-03-25 09:29:07 UTC; luoh2
