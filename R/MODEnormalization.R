@@ -37,6 +37,9 @@ MODEnormalization <- function(counts, conds, runID, winSize) {
     a <- apply(as.matrix(counts[, conds == "N"]), 1, mean)
     b <- apply(as.matrix(counts[, conds == "T"]), 1, mean)
     
+    names(a) <- rownames(counts)
+    names(b) <- rownames(counts)
+    
     ind <- (a != 0) & (b != 0)
     a <- a[ind]
     b <- b[ind]
