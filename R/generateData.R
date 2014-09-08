@@ -2,7 +2,7 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
     ControlRep = 5, CaseRep = ControlRep, EntityCount = 1000, 
     FC = "Norm(2,1)", perDiffAbund = 0.1, upPDA = perDiffAbund/2, 
     downPDA = perDiffAbund/2, numDataPoints = 100, AbundProfile = "HBR", modelFile = NULL, 
-    minAbund = 10, varLibsizes = 0.1, inputCount = NULL, inputLabel = NULL, 
+    minAbund = 10, varLibsizes = 0.1, outlier=0.0, inputCount = NULL, inputLabel = NULL, 
     SimulType = "auto") {
     
     #Check setting correct first to avoid meaningless waiting if wrong
@@ -25,6 +25,11 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
       }else if (is.null(modelFile) && (is.null(inputCount) || is.null(inputLabel))){
         stop("ERROR: using ModelFree approach without model file and pilot data for sampling.")
       }
+    }
+    
+    if (outlier>=1 || outlier<0)
+    {
+      stop("ERROR: Outlier parameter should be in range 0 to 1!")
     }
     
     model = SimulModel
@@ -671,6 +676,16 @@ generateData <- function(SimulModel = "Full", SampleVar = "medium",
             model.combined[, i] <- rmultinom(n = 1, size = libsizes[i], 
                 prob = model.freq[, i])
         }
+    }
+    
+    if (outlier>0){
+      numG=dim(model.combined)[1]
+      numR=dim(model.combined)[2]
+      ind <- sample(1:numG, round(numG*outlier))
+      for (i in ind){
+        j <- sample(numR,1)
+        model.combined[i,j] <- model.combined[i,j]*100
+      }
     }
     return(list(count = model.combined, DiffAbundList = EDgenelist, 
         dataLabel = dataLabel))

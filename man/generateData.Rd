@@ -34,7 +34,7 @@ Entity count.  Default is 1000.
 Fold change type. It can be "Norm(mu,sigma)", "logNorm(mu,sigma)", "log2Norm(mu,sigma)" or "Unif(a,b)". mu,sigma and a,b need be predefined. Default is "Norm(2,1)".
 }
   \item{perDiffAbund}{
-Percentage of differential abundance. Default is 0.1.
+Percentage of differential abundance. Default is 0.1 (i.e "10 percent").
 }
   \item{upPDA}{
 Percentage of up-regulated differential abundance. Default is perDiffAbund/2.
@@ -61,6 +61,10 @@ Minimum abundance cutoff. Default is 10.
 }
   \item{varLibsizes}{
 Variability between library sizes. Default is 0.1.
+}
+
+\item{outlier}{
+Percentage of added outliers. Default is 0.0 (i.e. no outlier).
 }
   \item{inputCount}{
 Input count file. Default is NULL. If not NULL, it learns the parameters (modelFile, SampleVar, perDiffAbund, upPDA, and downPDA) from count data.
