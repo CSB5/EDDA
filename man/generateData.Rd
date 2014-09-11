@@ -7,6 +7,7 @@ generateData(SimulModel="Full", SampleVar="medium",
 		ControlRep=5, CaseRep=ControlRep, EntityCount=1000, FC="Norm(2,1)",
 		perDiffAbund=0.1, upPDA=perDiffAbund/2, downPDA=perDiffAbund/2,
 		numDataPoints=100, AbundProfile = "HBR", modelFile = NULL, minAbund=10,varLibsizes=0.1,
+    outlier=FALSE,perOutlier=0.15, factorOutlier=100,
 		inputCount=NULL,inputLabel=NULL,SimulType="auto")
 }
 \arguments{
@@ -64,8 +65,15 @@ Variability between library sizes. Default is 0.1.
 }
 
 \item{outlier}{
-Percentage of added outliers. Default is 0.0 (i.e. no outlier).
+Outlier model. Default is FALSE, i.e. outlier model is turned off.
 }
+\item{perOutlier}{
+Percentage of added outliers. Default is 0.15.
+}
+\item{factorOutlier}{
+Scaling factor to generate outliers. Default is 100.
+}
+
   \item{inputCount}{
 Input count file. Default is NULL. If not NULL, it learns the parameters (modelFile, SampleVar, perDiffAbund, upPDA, and downPDA) from count data.
 }
