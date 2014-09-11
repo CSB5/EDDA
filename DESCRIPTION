@@ -1,8 +1,8 @@
 Package: EDDA
 Type: Package
 Title: Experimental Design in Differential Abundance analysis
-Version: 1.0.1
-Date: 2014-07-1
+Version: 1.0.2
+Date: 2014-09-10
 Author: Li Juntao, Luo Huaien, Chia Kuan Hui Burton, Niranjan Nagarajan
 Maintainer: Li Juntao<lij9@gis.a-star.edu.sg>, Luo
         Huaien<luoh2@gis.a-star.edu.sg>, Niranjan Nagarajan
@@ -14,4 +14,4 @@ Imports: graphics, stats, utils, parallel, methods, ROCR, DESeq,
         baySeq, snow, edgeR
 LinkingTo: Rcpp
 biocViews: Sequencing, ExperimentalDesign, Normalization, RNASeq, ChIPSeq
-Packaged: 2014-03-25 09:29:07 UTC; luoh2
+Packaged: 2014-09-10 09:29:07 UTC; luoh2
