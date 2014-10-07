@@ -1,11 +1,11 @@
-\name{HBR}
-\alias{HBR}
+\name{HBRmodel}
+\alias{HBRmodel}
 \docType{data}
 \title{Average abundance for RNA-seq data from Human Brain Reference.}
 \description{
-  RNA-seq profile datasets.
+  RNA-seq datasets.
 }
-\usage{data(HBR)}
+\usage{data(HBRmodel)}
 \format{
   Data frames with 17597 observations on the following 2 variables.
   \describe{

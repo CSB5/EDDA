@@ -7,7 +7,6 @@ generateData(SimulModel="Full", SampleVar="medium",
 		ControlRep=5, CaseRep=ControlRep, EntityCount=1000, FC="Norm(2,1)",
 		perDiffAbund=0.1, upPDA=perDiffAbund/2, downPDA=perDiffAbund/2,
 		numDataPoints=100, AbundProfile = "HBR", modelFile = NULL, minAbund=10,varLibsizes=0.1,
-    outlier=FALSE,perOutlier=0.15, factorOutlier=100,
 		inputCount=NULL,inputLabel=NULL,SimulType="auto")
 }
 \arguments{
@@ -35,7 +34,7 @@ Entity count.  Default is 1000.
 Fold change type. It can be "Norm(mu,sigma)", "logNorm(mu,sigma)", "log2Norm(mu,sigma)" or "Unif(a,b)". mu,sigma and a,b need be predefined. Default is "Norm(2,1)".
 }
   \item{perDiffAbund}{
-Percentage of differential abundance. Default is 0.1 (i.e "10 percent").
+Percentage of differential abundance. Default is 0.1.
 }
   \item{upPDA}{
 Percentage of up-regulated differential abundance. Default is perDiffAbund/2.
@@ -63,17 +62,6 @@ Minimum abundance cutoff. Default is 10.
   \item{varLibsizes}{
 Variability between library sizes. Default is 0.1.
 }
-
-\item{outlier}{
-Outlier model. Default is FALSE, i.e. outlier model is turned off.
-}
-\item{perOutlier}{
-Percentage of added outliers. Default is 0.15.
-}
-\item{factorOutlier}{
-Scaling factor to generate outliers. Default is 100.
-}
-
   \item{inputCount}{
 Input count file. Default is NULL. If not NULL, it learns the parameters (modelFile, SampleVar, perDiffAbund, upPDA, and downPDA) from count data.
 }
