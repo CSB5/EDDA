@@ -1,7 +1,7 @@
 Package: EDDA
 Type: Package
 Title: Experimental Design in Differential Abundance analysis
-Version: 1.0.2.1
+Version: 1.0.2
 Date: 2014-09-30
 Author: Li Juntao, Luo Huaien, Chia Kuan Hui Burton, Niranjan Nagarajan
 Maintainer: Chia Kuan Hui Burton <chiakhb@gis.a-star.edu.sg>, Niranjan Nagarajan <nagarajann@gis.a-star.edu.sg>
