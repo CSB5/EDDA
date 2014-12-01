@@ -32,7 +32,7 @@ run_baySeq_uqn <- function(counts, conds, cutoff, n, runID) {
     NR2 = length(conds[conds == "T"])
     groups <- list(NDE = c(rep(1, NR1 + NR2)), DE = c(rep(1, 
         NR1), rep(2, NR2)))
-    CD <- new("countData", data = as.matrix(UQNnormalization(counts)), 
+    CD <- new("countData", data = as.matrix(UQNnormalization(counts)$normCounts), 
         replicates = conds, groups = groups)
     
     # CD@libsizes <- getLibsizes(CD);
@@ -66,7 +66,7 @@ run_baySeq_Mode <- function(counts, conds, cutoff, n, runID,
     groups <- list(NDE = c(rep(1, NR1 + NR2)), DE = c(rep(1, 
         NR1), rep(2, NR2)))
     CD <- new("countData", data = as.matrix(normalizeData(counts, 
-        conds, runID, winSize)), replicates = conds, groups = groups)
+        conds, runID, winSize)$normCounts), replicates = conds, groups = groups)
     
     # CD@libsizes <- getLibsizes(CD);
     meanLib <- mean(apply(CD@data, 2, sum))
@@ -101,7 +101,7 @@ run_baySeq_nde <- function(counts, DElist, conds, cutoff, n,
     groups <- list(NDE = c(rep(1, NR1 + NR2)), DE = c(rep(1, 
         NR1), rep(2, NR2)))
     CD <- new("countData", data = as.matrix(normalizeNDE(counts, 
-        DElist, runID)), replicates = conds, groups = groups)
+        DElist, runID)$normCounts), replicates = conds, groups = groups)
     
     # CD@libsizes <- getLibsizes(CD);
     meanLib <- mean(apply(CD@data, 2, sum))

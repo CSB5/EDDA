@@ -55,7 +55,7 @@ run_DESeq <- function(counts, conds, cutoff, n, runID) {
 
 run_DESeq_uqn <- function(counts, conds, cutoff, n, runID) {
     # Preparing variables for DESeq run
-    cds <- newCountDataSet(UQNnormalization(counts), conds)
+    cds <- newCountDataSet(UQNnormalization(counts)$normCounts, conds)
     sizeFactors(cds) <- c(rep(1, length(conds)))
     if (n > 1) {
         cdsnew <- tryCatch(estimateDispersions(cds, method = "per-condition", 
@@ -112,7 +112,7 @@ run_DESeq_uqn <- function(counts, conds, cutoff, n, runID) {
 run_DESeq_Mode <- function(counts, conds, cutoff, n, runID, winSize) {
     # Preparing variables for DESeq run
     cds <- newCountDataSet(normalizeData(counts, conds, runID, 
-        winSize), conds)
+        winSize)$normCounts, conds)
     sizeFactors(cds) <- c(rep(1, length(conds)))
     # cds <- newCountDataSet(counts,conds); sizeFactors(cds) <-
     # computeNormalization(runID, winSizePercentage, minReads);
@@ -170,7 +170,7 @@ run_DESeq_Mode <- function(counts, conds, cutoff, n, runID, winSize) {
 
 run_DESeq_nde <- function(counts, DElist, conds, cutoff, n, runID) {
     # Preparing variables for DESeq run
-    cds <- newCountDataSet(normalizeNDE(counts, DElist, runID), 
+    cds <- newCountDataSet(normalizeNDE(counts, DElist, runID)$normCounts, 
         conds)
     sizeFactors(cds) <- c(rep(1, n * 2))
     # cds <- newCountDataSet(counts,conds); sizeFactors(cds) <-

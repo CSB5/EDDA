@@ -44,7 +44,7 @@ run_edgeR_uqn <- function(counts, conds, cutoff, n, runID) {
 
 run_edgeR_Mode <- function(counts, conds, cutoff, n, runID, winSize) {
     d <- DGEList(counts = normalizeData(counts, conds, runID, 
-        winSize), group = conds)
+        winSize)$normCounts, group = conds)
     d$samples$norm.factors <- rep(1, length(conds))
     
     d = estimateCommonDispMode(d)
@@ -67,7 +67,7 @@ run_edgeR_Mode <- function(counts, conds, cutoff, n, runID, winSize) {
 
 run_edgeR_nde <- function(counts, DElist, conds, cutoff, n, runID) {
     # Preparing variables for edgeR run
-    d <- DGEList(counts = normalizeNDE(counts, DElist, runID), 
+    d <- DGEList(counts = normalizeNDE(counts, DElist, runID)$normCounts, 
         group = conds)
     d$samples$norm.factors <- rep(1, n * 2)
     # d$samples$norm.factors <- normFactors; d =

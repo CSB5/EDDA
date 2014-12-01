@@ -37,7 +37,7 @@ run_NOISeq_uqn <- function(counts, conds, cutoff, n, runID) {
     NR1 = length(conds[conds == "N"])
     NR2 = length(conds[conds == "T"])
     
-    counts <- UQNnormalization(counts)
+    counts <- UQNnormalization(counts)$normCounts
     ind <- apply(counts, 1, mean) > 0
     counts <- counts[ind, ]
     
@@ -78,7 +78,7 @@ run_NOISeq_Mode <- function(counts, conds, cutoff, n, runID,
     NR1 = length(conds[conds == "N"])
     NR2 = length(conds[conds == "T"])
     
-    counts <- normalizeData(counts, conds, runID, winSize)
+    counts <- normalizeData(counts, conds, runID, winSize)$normCounts
     ind <- apply(counts, 1, mean) > 0
     counts <- counts[ind, ]
     
@@ -119,7 +119,7 @@ run_NOISeq_nde <- function(counts, DElist, conds, cutoff, n,
     NR1 = length(conds[conds == "N"])
     NR2 = length(conds[conds == "T"])
     
-    mydata <- readData(normalizeNDE(counts, DElist, runID), cond1 = c(1:NR1), 
+    mydata <- readData(normalizeNDE(counts, DElist, runID)$normCounts, cond1 = c(1:NR1), 
         cond2 = c((NR1 + 1):(NR1 + NR2)))
     rownames(mydata[[1]]) <- rownames(counts)
     rownames(mydata[[2]]) <- rownames(counts)

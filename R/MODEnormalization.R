@@ -172,7 +172,8 @@ normalizeData <- function(counts, conds, runID, winSize) {
     normCounts <- round(as.matrix(sweep(counts, 2, normFactors, 
         "/")))
     
-    return(normCounts)
+	newList <- list("normCounts" = normCounts, "normFactors" = normFactors);
+	return(newList);
 }  # end normalizeData
 
 
@@ -188,8 +189,9 @@ normalizeNDE <- function(data, DElist, runID) {
     
     normCounts <- round(as.matrix(sweep(counts, 2, normfactor, 
         "/")))
-    
-    return(normCounts)
+
+	newList <- list("normCounts" = normCounts, "normFactors" = normfactor);
+	return(newList);
 }  # end normalizeData
 
 
@@ -216,7 +218,9 @@ UQNnormalization <- function(counts, p = 0.75) {
     
     normCounts <- round(as.matrix(sweep(data, 2, normFactors, 
         "/")))
-    return(normCounts)
+
+	newList <- list("normCounts" = normCounts, "normFactors" = normFactors);
+	return(newList);
 }
 
 

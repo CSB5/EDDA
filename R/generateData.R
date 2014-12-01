@@ -705,7 +705,7 @@ learn_parameter_DESeq <- function(data, inputLabel){
   runID=""
   
   conds <- c(rep("N",NR1), rep("T", NR2));
-  cds <- newCountDataSet(normalizeData(data, conds, runID, 10), conditions=inputLabel)
+  cds <- newCountDataSet(normalizeData(data, conds, runID, 10)$normCounts, conditions=inputLabel)
   sizeFactors(cds) <- c(rep(1,length(conds)))
   #cds <- newCountDataSet(model.data, conditions=inputLabel)
   #cds <- estimateSizeFactors(cds)
@@ -738,7 +738,7 @@ learn_parameter_edgeR <- function(data, inputLabel){
   runID=""
   
   conds <- c(rep("N",NR1), rep("T", NR2));
-  model.data.norm <- normalizeData(data, conds, runID, 10)
+  model.data.norm <- normalizeData(data, conds, runID, 10)$normCounts
   
   d <- DGEList(counts=model.data.norm, group=inputLabel)
   d$samples$norm.factors <- rep(1, length(inputLabel));

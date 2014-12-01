@@ -19,7 +19,7 @@ run_MetaStats <- function(counts, conds, cutoff, n, runID) {
 
 run_MetaStats_uqn <- function(counts, conds, cutoff, n, runID) {
     
-    jobj <- receive_frequency_matrix(UQNnormalization(counts))
+    jobj <- receive_frequency_matrix(UQNnormalization(counts)$normCounts)
     detect_differentially_abundant_feaTRUEs(jobj, n + 1, paste(runID, 
         "MetaStats_uqn.results", sep = "-"))
     res <- read.table(paste(runID, "MetaStats_uqn.results", sep = "-"), 
@@ -41,7 +41,7 @@ run_MetaStats_Mode <- function(counts, conds, cutoff, n, runID,
     winSize) {
     
     jobj <- receive_frequency_matrix(normalizeData(counts, conds, 
-        runID, winSize))
+        runID, winSize)$normCounts)
     detect_differentially_abundant_feaTRUEs(jobj, n + 1, paste(runID, 
         "MetaStats_Mode.results", sep = "-"))
     res <- read.table(paste(runID, "MetaStats_Mode.results", 
@@ -63,7 +63,7 @@ run_MetaStats_nde <- function(counts, DElist, conds, cutoff,
     n, runID) {
     
     jobj <- receive_frequency_matrix(normalizeNDE(counts, DElist, 
-        runID))
+        runID)$normCounts)
     detect_differentially_abundant_feaTRUEs(jobj, n + 1, paste(runID, 
         "MetaStats_nde.results", sep = "-"))
     res <- read.table(paste(runID, "MetaStats_nde.results", sep = "-"), 
