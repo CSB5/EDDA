@@ -1,6 +1,3 @@
-library(Rcpp);
-dyn.load("/home/chiakhb/scripts/EDDA/cuffdiff.so");
-
 Cuffdiff <- function(counts, cond1, cond2){
   normFactors <- apply(counts, 2, sum) / 1e6;
   rpm <- sweep(counts, 2, normFactors, "/");	# normalize counts by per million read to get RPM
