@@ -49,7 +49,7 @@ call_cuffdiff <- function(counts, normFactors, cond1, cond2){
 	results <- data.frame(matrix(nrow=length(counts[,1]), ncol=7));	# create empty data frame to hold results
 	for (i in seq(from=1, to=length(counts[,1]), by=1)){
 		id <- rownames(counts)[i];
-		#rownames(results)[i] <- rownames(counts)[i];
+		rownames(results)[i] <- id;
 		
 		if(cond1 == 1){
 			mean_A <- counts[i,1:cond1];
