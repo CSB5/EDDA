@@ -1,16 +1,14 @@
 Package: EDDA
 Type: Package
 Title: Experimental Design in Differential Abundance analysis
-Version: 1.5.2
+Version: 1.5.3
 Date: 2015-01-13
 Author: Li Juntao, Luo Huaien, Chia Kuan Hui Burton, Niranjan Nagarajan
 Maintainer: Chia Kuan Hui Burton <chiakhb@gis.a-star.edu.sg>, Niranjan Nagarajan <nagarajann@gis.a-star.edu.sg>
 Description: EDDA is a tool for systematic assessment of the impact of experimental design and the statistical test used on the ability to detect differential abundance. EDDA can aid in the design of a range of common experiments such as RNA-seq, ChIP-seq, Nanostring assays, RIP-seq and Metagenomic sequencing, and enables researchers to comprehensively investigate the impact of experimental decisions on the ability to detect differential abundance. More details of EDDA can be found at Luo, Huaien et al. "The Importance of Study Design for Detecting Differentially Abundant Features in High-Throughput Experiments." Genome Biology 2014;15(12):527 (http://www.ncbi.nlm.nih.gov/pubmed/25517037/). An accompanying web server (http://edda.gis.a-star.edu.sg/) is available for easy access to some functionality of EDDA.
 License: GPL (>= 2)
 Depends: Rcpp (>= 0.10.4),parallel,methods,ROCR,DESeq,baySeq,snow,edgeR
-Imports: graphics, stats, utils, parallel, methods, ROCR, DESeq,
-        baySeq, snow, edgeR
+Imports: graphics, stats, utils, parallel, methods, ROCR, DESeq, baySeq, snow, edgeR
 LinkingTo: Rcpp
 biocViews: Sequencing, ExperimentalDesign, Normalization, RNASeq, ChIPSeq
-URL: http://burtonchia.github.io/EDDA/
-
+URL: http://csb5.github.io/EDDA/
